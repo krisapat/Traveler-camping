@@ -93,18 +93,14 @@ export const fetchLandmarks = cache(async ({ search = "", category }: { search?:
   return landmarks
 })
 
-export const fetchFavoriteId = async ({ landmarkId }: { landmarkId: string }) => {
+export const fetchIsFavorite = async ({ landmarkId }: { landmarkId: string }) => {
   const user = await getAuthUser()
   const favorite = await db.favorite.findFirst({
-    where: {
-      landmarkId: landmarkId,
-      profileId: user.id
-    },
-    select: {
-      id: true
-    }
+    where: { landmarkId, profileId: user.id },
+    select: { id: true },
   })
-  return favorite?.id || null
+
+  return !!favorite // แปลงเป็น boolean
 }
 
 export const fetchFavorites = async () => {
@@ -133,41 +129,34 @@ export const fetchFavorites = async () => {
 }
 
 export const toggleFavoriteAction = async (
-  { favoriteID, landmarkId, pathname }: { favoriteID: string | null; landmarkId: string; pathname: string },
+  { landmarkId, pathname }: { landmarkId: string; pathname: string },
   _prevState: FormState,
   _formData: FormData
 ): Promise<FormState> => {
   try {
-    const user = await getAuthUser();
+    const user = await getAuthUser()
 
-    if (favoriteID) {
-      await db.favorite.delete({ where: { id: favoriteID } });
-      revalidatePath(pathname);
-      return { message: "Remove favorite", success: true };
+    // ลบ favorite ที่มีอยู่ (ถ้ามี)
+    const deleted = await db.favorite.deleteMany({
+      where: { profileId: user.id, landmarkId }
+    })
+
+    if (deleted.count > 0) {
+      revalidatePath(pathname)
+      return { message: "Remove favorite", success: true }
     }
 
-    // ใช้ upsert แบบลบของเก่าแล้วสร้างใหม่
-    const favorite = await db.favorite.findUnique({
-      where: { profileId_landmarkId: { profileId: user.id, landmarkId } }
-    });
-
-    if (favorite) {
-      await db.favorite.delete({ where: { id: favorite.id } });
-      revalidatePath(pathname);
-      return { message: "Remove favorite", success: true };
-    }
-
+    // ถ้าไม่มี → สร้างใหม่
     await db.favorite.create({
       data: { profileId: user.id, landmarkId }
-    });
+    })
 
-    revalidatePath(pathname);
-    return { message: "Add favorite", success: true };
+    revalidatePath(pathname)
+    return { message: "Add favorite", success: true }
   } catch (error) {
-    return renderError(error);
+    return renderError(error)
   }
-};
-
+}
 
 export const fetchLandmarkDetail = cache(async ({ id }: { id: string }) => {
   return db.landmark.findFirst({
