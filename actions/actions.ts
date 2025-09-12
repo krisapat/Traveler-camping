@@ -141,25 +141,33 @@ export const toggleFavoriteAction = async (
     const user = await getAuthUser();
 
     if (favoriteID) {
-      // ลบ favorite เดิม
       await db.favorite.delete({ where: { id: favoriteID } });
+      revalidatePath(pathname);
       return { message: "Remove favorite", success: true };
     }
 
-    // ถ้าไม่มี favoriteID ให้สร้างใหม่ (ใช้ upsert ลด query)
-    await db.favorite.upsert({
-      where: {
-        profileId_landmarkId: { profileId: user.id, landmarkId } // composite unique
-      },
-      update: {}, // ไม่มีอะไรอัปเดต
-      create: { profileId: user.id, landmarkId }
+    // ใช้ upsert แบบลบของเก่าแล้วสร้างใหม่
+    const favorite = await db.favorite.findUnique({
+      where: { profileId_landmarkId: { profileId: user.id, landmarkId } }
     });
 
+    if (favorite) {
+      await db.favorite.delete({ where: { id: favorite.id } });
+      revalidatePath(pathname);
+      return { message: "Remove favorite", success: true };
+    }
+
+    await db.favorite.create({
+      data: { profileId: user.id, landmarkId }
+    });
+
+    revalidatePath(pathname);
     return { message: "Add favorite", success: true };
   } catch (error) {
     return renderError(error);
   }
 };
+
 
 export const fetchLandmarkDetail = cache(async ({ id }: { id: string }) => {
   return db.landmark.findFirst({
