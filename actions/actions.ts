@@ -97,10 +97,10 @@ export const fetchIsFavorite = async ({ landmarkId }: { landmarkId: string }) =>
   const user = await getAuthUser()
   const favorite = await db.favorite.findFirst({
     where: { landmarkId, profileId: user.id },
-    select: { id: true },
+    select: { id: true }
   })
 
-  return !!favorite // แปลงเป็น boolean
+  return !!favorite
 }
 
 export const fetchFavorites = async () => {
@@ -136,23 +136,20 @@ export const toggleFavoriteAction = async (
   try {
     const user = await getAuthUser()
 
-    // ลบ favorite ที่มีอยู่ (ถ้ามี)
-    const deleted = await db.favorite.deleteMany({
-      where: { profileId: user.id, landmarkId }
+    const existingFavorite = await db.favorite.findUnique({
+      where: { profileId_landmarkId: { profileId: user.id, landmarkId } }
     })
 
-    if (deleted.count > 0) {
+    if (existingFavorite) {
+      await db.favorite.delete({ where: { id: existingFavorite.id } })
       revalidatePath(pathname)
       return { message: "Remove favorite", success: true }
     }
 
-    // ถ้าไม่มี → สร้างใหม่
-    await db.favorite.create({
-      data: { profileId: user.id, landmarkId }
-    })
-
+    await db.favorite.create({ data: { profileId: user.id, landmarkId } })
     revalidatePath(pathname)
     return { message: "Add favorite", success: true }
+
   } catch (error) {
     return renderError(error)
   }

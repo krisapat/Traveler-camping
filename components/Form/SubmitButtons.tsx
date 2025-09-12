@@ -37,21 +37,18 @@ export const SignInCardButton = () => {
   )
 }
 
-export const CardSubmitButton = ({ isFavorite }: { isFavorite: boolean }) => {
-  const {pending} = useFormStatus()
+export const CardSubmitButton = ({ isFavorite, disabled }: { isFavorite: boolean, disabled?: boolean }) => {
+  const { pending } = useFormStatus()
+
   return (
     <Button
       type="submit"
       size="icon"
       variant="outline"
-      className="dark:bg-black text-primary transition-colors hover:text-primary  dark:hover:bg-gray-900"
+      className="dark:bg-black text-primary"
+      disabled={pending || disabled}
     >
-      {
-        pending
-        ? <LoaderCircle className="animate-spin" />
-        : isFavorite ? < Heart fill="red" /> : < Heart />
-
-      }
+      { pending ? <LoaderCircle className="animate-spin" /> : isFavorite ? <Heart fill="red" /> : <Heart /> }
     </Button>
   )
 }
