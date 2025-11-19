@@ -98,16 +98,12 @@ export const fetchLandmarks = cache(async ({ search = "", category }: { search?:
 })
 
 export const fetchIsFavorite = async ({ landmarkId }: { landmarkId: string }) => {
-  try {
     const user = await getAuthUser()
     const favorite = await db.favorite.findFirst({
       where: { landmarkId, profileId: user.id },
       select: { id: true }
     })
     return !!favorite
-  } catch (errors) {
-    return []
-  }
 }
 
 export const fetchFavorites = async () => {
